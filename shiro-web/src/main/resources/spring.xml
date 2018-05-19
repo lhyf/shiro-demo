@@ -2,26 +2,43 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:context="http://www.springframework.org/schema/context"
-       xmlns:mvc="http://www.springframework.org/schema/cache"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd">
+       xmlns:mvc="http://www.springframework.org/schema/cache" xmlns:utli="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <import resource="spring-dao.xml"/>
+    <import resource="spring-redis.xml"/>
+    <context:component-scan base-package="org.lhyf"/>
 
     <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
         <property name="securityManager" ref="securityManager"></property>
         <property name="loginUrl" value="login.html"></property>
         <property name="unauthorizedUrl" value="403.html"></property>
+        <property name="filters" >
+            <utli:map>
+                <entry key="rolesOr" value-ref="rolesOrFilter"/>
+            </utli:map>
+        </property>
         <property name="filterChainDefinitions">
             <value>
                 /login.html = anon
                 /login/user = anon
-                /* = authc
+                /testrole = roles["admin,admin1"]
+                /testrole1 = rolesOr["admin,admin1"]
+                /logout = logout
+                /** = authc
             </value>
 
         </property>
     </bean>
 
+    <bean id="rolesOrFilter" class="org.lhyf.filter.RolesOrFilter" ></bean>
+
     <!--创建securityManager-->
     <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
         <property name="realm" ref="realm"></property>
+        <property name="sessionManager" ref="sessionManager"/>
+        <property name="cacheManager" ref="cacheManager"/>
+        <property name="rememberMeManager" ref="cookieRememberMeManager"/>
     </bean>
 
     <bean id="realm" class="org.lhyf.realm.CustomRealm">
@@ -31,5 +48,25 @@
     <bean id="matcher" class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
         <property name="hashAlgorithmName" value="MD5"></property>
         <property name="hashIterations" value="1024"></property>
+    </bean>
+
+<!--    <bean class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager" id="sessionManager">
+        <property name="sessionDAO" ref="redisSessionDao"></property>
+    </bean>-->
+
+    <bean class="org.lhyf.session.CustomSessionManager" id="sessionManager">
+        <property name="sessionDAO" ref="redisSessionDao"/>
+    </bean>
+
+    <bean class="org.lhyf.session.RedisSessionDao" id="redisSessionDao"/>
+
+    <bean class="org.lhyf.cache.RedisCacheManager" id="cacheManager"/>
+
+    <bean class="org.apache.shiro.web.mgt.CookieRememberMeManager" id="cookieRememberMeManager">
+        <property name="cookie" ref="cookie"/>
+    </bean>
+    <bean class="org.apache.shiro.web.servlet.SimpleCookie" id="cookie">
+        <property name="name" value="rememberme"></property>
+        <property name="maxAge" value="200"></property>
     </bean>
 </beans>

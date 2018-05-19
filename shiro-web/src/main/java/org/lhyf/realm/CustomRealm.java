@@ -6,20 +6,16 @@ import org.apache.shiro.authz.SimpleAuthorizationInfo;
 import org.apache.shiro.realm.AuthorizingRealm;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.util.ByteSource;
+import org.lhyf.dao.UserDao;
+import org.lhyf.entity.User;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class CustomRealm extends AuthorizingRealm{
 
-    private Map<String,String> userMap = new HashMap<String,String>();
-    {
-        userMap.put("xiaoming","dd845e5e5412ba7752defdf383bf394f");
-        userMap.put("xiaohong","123456");
-        userMap.put("xiaoqing","123456");
-    }
+    @Autowired
+    private UserDao userDao;
 
     @Override
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
@@ -27,14 +23,10 @@ public class CustomRealm extends AuthorizingRealm{
         Object principal = principals.getPrimaryPrincipal();
 
         //2. 利用登录的用户的信息来用户当前用户的角色或权限(可能需要查询数据库)
-        Set<String> roles = new HashSet<>();
-        roles.add("user");
-        if("admin".equals(principal)){
-            roles.add("admin");
-        }
+        Set<String> roles = getRolesByUserName(principal.toString());
 
         Set<String> permissions = new HashSet<>();
-        permissions.add("/user/add");
+//        permissions.add("/user/add");
         //3. 创建 SimpleAuthorizationInfo, 并设置其 reles 属性.
         SimpleAuthorizationInfo info = new SimpleAuthorizationInfo();
         info.setRoles(roles);
@@ -51,7 +43,7 @@ public class CustomRealm extends AuthorizingRealm{
         String username = upToken.getUsername();
 
         //2.通过用户名从数据库中获取密码
-        String password = getPasswordByUserName(username);
+        String password = userDao.getPasswordByUserName(username);
         if(password == null){
             throw new UnknownAccountException("没有这个用户");
         }
@@ -62,8 +54,11 @@ public class CustomRealm extends AuthorizingRealm{
         return info;
     }
 
-    //模拟数据库
-    private String getPasswordByUserName(String userName){
-        return userMap.get(userName);
+    private Set<String> getRolesByUserName(String userName){
+        System.out.println("从数据库中获取权限数据");
+
+        List<String> roles = userDao.getRolesByUserName(userName);
+        Set<String> set = new HashSet<>(roles);
+        return set;
     }
 }
